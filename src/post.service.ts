@@ -1,6 +1,8 @@
 import postRepository, { IPost } from './post.repository';
 import cacheService from './cache.service';
 
+let promise: Promise<IPost[]> | null = null;
+
 const getPosts = async (): Promise<IPost[]> => {
   const cache = await cacheService.getPosts();
   if (cache) {
@@ -8,11 +10,21 @@ const getPosts = async (): Promise<IPost[]> => {
     return cache;
   }
 
-  console.count('Hit database');
-  const posts = await postRepository.getPosts();
-  await cacheService.setPosts(posts);
+  if (promise) {
+    return promise;
+  }
 
-  return posts;
+  try {
+    console.count('Hit database');
+    promise = postRepository.getPosts();
+
+    const posts = await promise;
+    await cacheService.setPosts(posts);
+
+    return posts;
+  } finally {
+    promise = null;
+  }
 };
 
 export default {
